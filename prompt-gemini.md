@@ -94,13 +94,17 @@ Required layout behavior:
 - Only the main page-content region should own vertical scrolling.
 
 Use this layout foundation:
-- `html`, `body`, and `#root`: `height: 100%`.
-- `#root`: full width, maximum width `500px`, centered with `margin-inline: auto`, and a vertical flex layout.
-- AppShell: fill the available root height and use a vertical flex layout.
-- Header: remain outside the scrollable page-content region.
-- Main content region: `flex: 1`, `min-height: 0`, and `overflow-y: auto`.
-- BottomNav: remain outside the scrollable page-content region at the bottom of AppShell.
-- Do not use `100vh` or `100dvh` as a replacement for the required root height foundation.
+- `html`, `body`, `#root`, and the root `App` component: `height: 100%`.
+- Do not set `min-height` on `html`, `body`, `#root`, `App`, AppShell, Main, or Content.
+- `#root` and `App`: full width, maximum width `500px`, centered with `margin-inline: auto`, and a vertical flex layout.
+- AppShell: occupy the available parent height with `height: 100%` and use `display: flex; flex-direction: column`.
+- Keep Header, Main/Content, and BottomNav as direct sequential regions in the AppShell column layout.
+- Header: first in normal document/flex flow at the top. Do not use `position: fixed`, `position: sticky`, absolute positioning, or manual offsets to pin it.
+- Main/Content: the flexible middle region with `flex: 1` and `overflow-y: auto`. It is the only primary vertical scroll container.
+- BottomNav: last in normal document/flex flow at the bottom, after Main/Content. Do not use `position: fixed`, `position: sticky`, absolute positioning, or manual offsets to pin it.
+- Header and BottomNav remain visible while Main/Content scrolls because they are outside the scrollable region, not because they are fixed or sticky.
+- Do not add `min-height: 0` to any element in this root/App/AppShell/Main/Content layout chain.
+- Do not use `100vh` or `100dvh` as a replacement for the required `height: 100%` foundation.
 - Avoid nested vertical scroll containers unless a specific component genuinely requires one.
 
 ## APPLICATION ARCHITECTURE
@@ -509,13 +513,17 @@ Before declaring the task complete, verify:
 - [ ] One React application is used.
 - [ ] All six required pages are implemented.
 - [ ] All pages use the same AppShell.
-- [ ] Header and BottomNav remain outside the scrollable content region.
+- [ ] Header and BottomNav remain in natural flex flow outside the scrollable Main/Content region.
+- [ ] Header is the first AppShell region and BottomNav is the last AppShell region.
+- [ ] Header and BottomNav do not use fixed, sticky, absolute positioning, or manual pinning offsets.
+- [ ] `html`, `body`, `#root`, and `App` use `height: 100%` without `min-height`.
+- [ ] No `min-height` is applied to the root/App/AppShell/Main/Content layout chain.
 
 ### Layout
 - [ ] Maximum application width is 500px.
 - [ ] Mobile width fills the available viewport.
 - [ ] Wider screens center the application without creating a desktop layout.
-- [ ] Main content uses `flex: 1` and `min-height: 0`.
+- [ ] Main/Content uses `flex: 1` and `overflow-y: auto`, with no `min-height` declaration.
 - [ ] Only the intended content region scrolls vertically.
 - [ ] No unintended horizontal overflow exists.
 - [ ] Header and BottomNav remain visible during content scrolling.
