@@ -1,4 +1,4 @@
-# ASRI COLLECTION — GEMINI CANVAS STOREFRONT PROMPT
+# DIVOOM STORE — GEMINI CANVAS STOREFRONT PROMPT
 
 ## ROLE
 
@@ -21,16 +21,18 @@ Work as a practical implementation engineer. Make architecture and implementatio
 
 ## CONTEXT
 
-Build **Asri Collection**, a single-store online fashion storefront.
+Build **Divoom Store**, a single-store online Divoom product storefront.
 
-- Store model: one independent store with its own brand identity.
+- Store model: one independent Divoom-focused store with its own brand identity.
+- Store name: Divoom Store.
+- Catalog: Divoom products supplied by the configured Product API.
 - Application type: customer-facing storefront.
 - Primary target: mobile devices.
 - Design direction: Minimalist Modern.
 - Development environment: Gemini Canvas.
 - Frontend stack: React, TypeScript, CSS, and Lucide Icons.
 
-This is a frontend storefront application. It is not a marketplace, seller platform, or store administration system.
+This is a single-store customer storefront. It is not a marketplace, seller platform, or store administration system.
 
 ## MISSION
 
@@ -56,7 +58,7 @@ Deliver the following six customer-facing pages:
 5. ProfilePage
 6. LivechatPage
 
-All pages must share one consistent application shell and design system. Core frontend interactions must work without requiring a backend.
+All pages must share one consistent application shell and design system. Product catalog data must be loaded from the specified read-only Product API. Cart and other included frontend interactions remain client-side; do not add a separate backend or order service.
 
 ## TECHNOLOGY AND IMPLEMENTATION
 
@@ -137,8 +139,8 @@ App
 │   ├── EmptyState
 │   └── SharedUI
 │
-├── Data
-│   └── LocalStoreData
+├── Services
+│   └── ProductApiService
 │
 ├── Types
 │   └── StorefrontTypes
@@ -154,7 +156,7 @@ This is a logical organization guide. Adapt file placement to the existing Canva
 ### Application shell responsibilities
 
 **Header**
-- Display the Asri Collection brand identity.
+- Display the Divoom Store brand identity.
 - Provide an action to open CartPage.
 - Provide an action to open ProfilePage.
 - Keep the header visually consistent across the six pages.
@@ -183,7 +185,7 @@ Include:
 - Reusable product cards.
 - Clear navigation to the catalog and product details.
 
-Do not invent discount campaigns, shipping promises, ratings, or brand claims. If content is needed to demonstrate the UI, use clearly identifiable local demo content.
+Do not invent discount campaigns, shipping promises, ratings, or brand claims. Do not create substitute or demo products when the API is unavailable; show the defined loading, error, or empty state instead.
 
 ### 2. CatalogPage
 
@@ -197,7 +199,7 @@ Include:
 - Sorting or filtering controls only where they can be implemented meaningfully.
 - Clear empty state when no products match the search or selected category.
 
-Search and category filtering must operate on the same local product dataset. Do not create controls that look interactive but have no effect.
+Search, category filtering, and sorting must operate on the same normalized API product dataset. Do not create controls that look interactive but have no effect.
 
 ### 3. ProductDetailPage
 
@@ -217,7 +219,7 @@ Rules:
 - Variant selection must be reflected in the selected cart item.
 - Prevent adding an invalid or unselected required variant.
 - Give clear feedback after a successful Add to Cart action.
-- Do not invent product specifications that are not present in the local product data.
+- Do not invent product specifications that are not present in the API response.
 
 ### 4. CartPage
 
@@ -282,14 +284,114 @@ Constraints:
 
 ## DATA AND STATE RULES
 
-This version uses frontend-local data and state only.
+## PRODUCT API INTEGRATION
 
-Product data:
-- Use one consistent typed product dataset as the source for HomePage, CatalogPage, and ProductDetailPage.
-- Product cards and product details must refer to the same product records.
-- Each product should have a stable identifier.
-- Support product variants only when the product data defines them.
-- Use local demo product records only when needed to demonstrate the storefront; do not present demo information as verified business information.
+The product catalog must use this exact read-only HTTP GET endpoint:
+
+`https://mvwflakurihhakdrlteg.supabase.co/functions/v1/get-divoom-products`
+
+Integration rules:
+- Fetch products from this endpoint; do not use hardcoded product arrays, local demo catalogs, or mock product data as the source of truth.
+- Implement one reusable typed ProductApiService. Do not fetch the same catalog independently from each page.
+- Load the catalog once at the shared application/data layer and expose the resulting state to HomePage, CatalogPage, and ProductDetailPage.
+- Use the browser Fetch API with GET. Do not assume an API key, authorization header, or additional query parameter unless the endpoint explicitly requires it.
+- Check the HTTP response status before parsing the response body.
+- Validate that the response is an object, `success === true`, and `data` is an array before treating it as successful.
+- Treat `success !== true`, malformed JSON, invalid response shape, network failure, and non-2xx HTTP status as API errors.
+- Read `total` when supplied, but do not assume it always equals the current array length.
+- Do not silently replace API errors with static or fabricated product records.
+- Do not add Supabase client SDK, database access, authentication, write operations, or other Supabase integration. This storefront only consumes the specified Edge Function.
+- Do not modify, deploy, or reconfigure the Supabase function.
+
+### API response and product fields
+
+The endpoint returns a JSON object shaped like:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "astrotooblack",
+      "item_group_id": "astrotoo",
+      "title": "Astrotoo Black",
+      "description": "Product description",
+      "rich_text_description": "<p>Product details</p>",
+      "availability": "in stock",
+      "condition": "new",
+      "price": 3627819,
+      "sale_price": null,
+      "link": "/products/astrotoo",
+      "image_link": "https://example.com/product.jpg",
+      "additional_image_link": [],
+      "brand": "Divoom",
+      "product_type": "Display",
+      "color": "Black",
+      "size": null,
+      "material": null,
+      "pattern": null,
+      "gender": null,
+      "age_group": null,
+      "additional_variant_attribute": null
+    }
+  ],
+  "total": 42
+}
+```
+
+This is an illustrative schema based on the supplied API example, not a complete fixed list of every possible field or product. Preserve optional and nullable fields in the TypeScript model.
+
+Map fields as follows:
+- `id`: unique identifier for an individual product variant/record; use as the stable product-record key.
+- `item_group_id`: shared identifier that groups variants belonging to the same product family.
+- `title`: display name for the individual product record.
+- `description`: plain-text product description and safe fallback.
+- `rich_text_description`: optional HTML-rich description; sanitize it with a trusted safe approach before rendering. Never inject untrusted HTML directly with `dangerouslySetInnerHTML`. If safe sanitization is unavailable, render the plain-text `description` instead.
+- `availability`: product availability; do not present unavailable products as purchasable.
+- `condition`: product condition, when useful to display.
+- `price`: regular numeric price in Indonesian rupiah (IDR).
+- `sale_price`: nullable numeric sale price. Use it as the active price only when it is a valid positive number; otherwise use `price`.
+- `link`: product path/reference from the API. Do not assume it is an absolute URL or use it as the unique record key.
+- `image_link`: primary product image URL.
+- `additional_image_link`: optional array of additional image URLs.
+- `brand`: brand name.
+- `product_type`: product category/type source.
+- `color`, `size`, `material`, `pattern`, `gender`, `age_group`, `additional_variant_attribute`: optional product or variant attributes. Preserve null values and do not display empty attributes.
+
+Use Indonesian Rupiah formatting with `Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 })`. Do not hardcode currency strings or convert the API price using an assumed exchange rate.
+
+### Product grouping and variants
+
+- API records sharing the same `item_group_id` belong to the same product family.
+- Treat each distinct `id` as an individual purchasable variant/record.
+- Group records by `item_group_id` for product-family discovery and product detail presentation.
+- On a product-family detail page, show the available records in that group as selectable variants, using available attributes such as color or size to distinguish them.
+- The selected variant must resolve to one exact API record and its `id`.
+- Do not infer that every product has color or size variants; use only fields actually supplied by the API.
+- If `item_group_id` is absent or empty, treat that record as its own product family using its `id`.
+- Do not merge records from different groups merely because their titles or images look similar.
+- Use `image_link` as the primary image and `additional_image_link` as the gallery when available. Handle missing or failed images with a neutral fallback.
+- Use `product_type` for category navigation/filtering when present. Do not invent categories unsupported by the API.
+
+### API loading, error, and refresh states
+
+Maintain explicit shared catalog states:
+- Loading: show a non-blocking loading presentation while the initial request is pending.
+- Success with products: render the API catalog.
+- Success with an empty `data` array: show a genuine empty-catalog state.
+- Error: show a clear error state and a Retry action that re-runs the request.
+- Retry must not create duplicate requests or duplicate product records.
+- Do not show stale mock products during loading or after an API failure.
+- Do not claim the catalog is current or refreshed unless a successful request confirms it.
+
+### Product data and frontend state
+
+- Keep a normalized typed representation of the API response as the single source of truth for all product displays.
+- HomePage, CatalogPage, and ProductDetailPage must consume the same API-backed product state.
+- Search, category filtering, and sorting must derive their results from that shared state; do not maintain separate divergent product arrays.
+- Cart entries must retain the selected API record `id`, its `item_group_id`, selected variant attributes, quantity, and the price snapshot used when the item was added.
+- Resolve cart items against the current API data when possible, while handling an item that is no longer returned by the API without crashing or silently changing its identity.
+- Do not fabricate missing product fields or treat null values as real values.
 
 Cart state:
 - Use one shared cart state accessible from ProductDetailPage, Header, and CartPage.
@@ -389,7 +491,7 @@ Work in this order:
 2. Preserve working project configuration and existing approved implementation.
 3. Establish the shared application shell and mobile layout behavior.
 4. Establish the design tokens and reusable UI components.
-5. Define the typed local product data and shared cart state.
+5. Implement the typed ProductApiService, API response validation, shared catalog state, and shared cart state.
 6. Implement the six pages.
 7. Connect navigation and page-level interactions.
 8. Validate responsive behavior, scrolling, accessibility, and state consistency.
@@ -424,12 +526,20 @@ Before declaring the task complete, verify:
 - [ ] Returning from product detail is predictable.
 - [ ] Active BottomNav state is correct.
 
-### Catalog and product
-- [ ] Search filters the shared product dataset.
-- [ ] Category selection filters the shared product dataset.
-- [ ] Empty search results display an appropriate empty state.
-- [ ] Product details match the selected product record.
-- [ ] Required variants are validated before adding to cart.
+### Product API and catalog
+- [ ] ProductApiService calls the exact configured GET endpoint.
+- [ ] No local or mock product catalog is used as a fallback.
+- [ ] HTTP status, JSON parsing, `success`, and `data` shape are validated.
+- [ ] Loading, API error, retry, and empty-catalog states work.
+- [ ] HomePage, CatalogPage, and ProductDetailPage use the same API-backed data.
+- [ ] Search and category filtering operate on the API product records.
+- [ ] Records are grouped by `item_group_id`.
+- [ ] Variant selection resolves to the correct `id`.
+- [ ] Price uses valid `sale_price` when available, otherwise `price`.
+- [ ] Prices are formatted as IDR.
+- [ ] Primary and additional product images use the API image fields.
+- [ ] Rich text is sanitized before rendering, with plain-text fallback.
+- [ ] Product details match the selected API record and group.
 
 ### Cart
 - [ ] Add to Cart updates shared cart state.
@@ -464,11 +574,12 @@ If a requirement cannot be verified in the Canvas environment, state that limita
 ## OUTPUT REQUIREMENTS
 
 The final Canvas result must contain:
-1. A working Asri Collection React storefront.
+1. A working Divoom Store React storefront.
 2. The six required pages connected through working navigation.
 3. A consistent mobile-only AppShell and design system.
-4. Functional local catalog and cart interactions.
-5. Clear frontend-only boundaries for Profile, Livechat, and Checkout.
+4. A catalog loaded from the specified Divoom Product API.
+5. Functional API-backed catalog and client-side cart interactions.
+6. Clear frontend-only boundaries for Profile, Livechat, and Checkout.
 
 After implementation, provide a concise completion report covering:
 - Pages implemented.
@@ -478,6 +589,6 @@ After implementation, provide a concise completion report covering:
 
 ## FINAL INSTRUCTION
 
-Implement the Asri Collection storefront directly in Gemini Canvas. Follow this specification as the source of truth. Prioritize correctness, consistency, usability, and scope control over adding features.
+Implement the Divoom Store storefront directly in Gemini Canvas. Follow this specification as the source of truth. Prioritize correctness, consistency, usability, and scope control over adding features.
 
 Do not merely describe what should be built. Build it, validate it, and report only what has actually been completed and verified.
