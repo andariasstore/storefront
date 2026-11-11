@@ -523,10 +523,14 @@ Before declaring the task complete, verify:
 - [ ] Maximum application width is 500px.
 - [ ] Mobile width fills the available viewport.
 - [ ] Wider screens center the application without creating a desktop layout.
-- [ ] Main/Content uses `flex: 1` and `overflow-y: auto`, with no `min-height` declaration.
-- [ ] Only the intended content region scrolls vertically.
+- [ ] `html`, `body`, `#root`, and `App` use `height: 100%`.
+- [ ] No `min-height` declaration is applied to the root/App/AppShell/Main/Content layout chain.
+- [ ] AppShell uses a vertical flex layout with Header, Main/Content, and BottomNav in natural sequential flow.
+- [ ] Header is the first region and remains naturally at the top without fixed, sticky, or absolute positioning.
+- [ ] Main/Content uses `flex: 1` and `overflow-y: auto`.
+- [ ] BottomNav is the last region and remains naturally at the bottom without fixed, sticky, or absolute positioning.
+- [ ] Only Main/Content owns primary vertical scrolling.
 - [ ] No unintended horizontal overflow exists.
-- [ ] Header and BottomNav remain visible during content scrolling.
 
 ### Navigation
 - [ ] Home, Catalog, and Livechat navigation work.
