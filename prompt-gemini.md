@@ -218,6 +218,7 @@ Rules:
 - Open the correct product when a product card is selected.
 - Variant selection must be reflected in the selected cart item.
 - Prevent adding an invalid or unselected required variant.
+- Disable Add to Cart for a selected API record that is not marked `in stock`.
 - Give clear feedback after a successful Add to Cart action.
 - Do not invent product specifications that are not present in the API response.
 
@@ -347,7 +348,7 @@ Map fields as follows:
 - `title`: display name for the individual product record.
 - `description`: plain-text product description and safe fallback.
 - `rich_text_description`: optional HTML-rich description; sanitize it with a trusted safe approach before rendering. Never inject untrusted HTML directly with `dangerouslySetInnerHTML`. If safe sanitization is unavailable, render the plain-text `description` instead.
-- `availability`: product availability; do not present unavailable products as purchasable.
+- `availability`: product availability; treat the value case-insensitively. Only records marked `in stock` may be added to the cart. For any other or missing availability value, clearly show the status and disable Add to Cart unless the API contract is later confirmed to define another purchasable status.
 - `condition`: product condition, when useful to display.
 - `price`: regular numeric price in Indonesian rupiah (IDR).
 - `sale_price`: nullable numeric sale price. Use it as the active price only when it is a valid positive number; otherwise use `price`.
@@ -464,7 +465,7 @@ Included:
 - Shared application shell.
 - Mobile-only layout.
 - Minimalist Modern design system.
-- Local product data.
+- Product data loaded from the specified read-only API.
 - Frontend navigation.
 - Local cart interactions.
 - Frontend-only Profile and Livechat presentation.
